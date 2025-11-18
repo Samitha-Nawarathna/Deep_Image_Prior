@@ -1,7 +1,7 @@
 
 from dip_core.abstractions.stopper import Stopper
 
-class MaxIterationStopper(Stopper):
+class DefaultStopper(Stopper):
     def __init__(self, max_iter):
         self.max_iter = max_iter
 

@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from dip_core.abstractions.logger import Logger
 
-class SimpleLogger(Logger):
+class DefaultLogger(Logger):
     def __init__(self, log_dir):
         self.log_dir = log_dir
         os.makedirs(log_dir, exist_ok=True)
