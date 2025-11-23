@@ -45,12 +45,6 @@ if __name__ == '__main__':
 
     z = torch.randn(config['noise_shape']) * config['sigma']
 
-    #metrics list
-    metrics_list = [PSNR()]
-
-    #set up logger
-    logger = DenoisingLogger(gt,metrics_list=metrics_list, log_dir=config['log_dir'])
-    logger.save_config(config)
 
 
     ## plot tensor images
@@ -83,6 +77,13 @@ if __name__ == '__main__':
     optimizer = DefaultOptimizerFactory(config['lr']).create_optimizer(model.parameters())
 
     step_fn = DefaultTrainingStep()
+
+    #metrics list
+    metrics_list = [PSNR()]
+
+    #set up logger
+    logger = DenoisingLogger(gt,metrics_list=metrics_list, log_dir=config['log_dir'])
+    logger.save_config(config)
 
 
     trainer = DefaultTrainer(
