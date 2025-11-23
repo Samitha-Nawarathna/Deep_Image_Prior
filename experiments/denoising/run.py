@@ -76,6 +76,12 @@ if __name__ == '__main__':
 
     step_fn = DefaultTrainingStep()
 
+    if config['use_gpu']:
+        model = model.cuda()
+        noisy_image = noisy_image.cuda()
+        z = z.cuda()
+        noise = noise.cuda()
+
     trainer = DefaultTrainer(
         model, step_fn, operator, stopper, optimizer, loss_fn, noise, noisy_image, logger, config, image_per=500
     )
