@@ -64,6 +64,14 @@ if __name__ == '__main__':
     network_factory = DefaultNetworkFactory()
     model = network_factory.create_network(config['network'], config=config['description'])
 
+    
+    if config['use_gpu']:
+        model = model.cuda()
+        noisy_image = noisy_image.cuda()
+        z = z.cuda()
+        noise = noise.cuda()
+        gt = gt.cuda()
+
     # #plot network outputs before training
     # plot_tensor(model(z))
     # plot_tensor(model(noisy_image))
@@ -76,11 +84,6 @@ if __name__ == '__main__':
 
     step_fn = DefaultTrainingStep()
 
-    if config['use_gpu']:
-        model = model.cuda()
-        noisy_image = noisy_image.cuda()
-        z = z.cuda()
-        noise = noise.cuda()
 
     trainer = DefaultTrainer(
         model, step_fn, operator, stopper, optimizer, loss_fn, noise, noisy_image, logger, config, image_per=500
