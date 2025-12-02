@@ -24,3 +24,15 @@ class DenoisingLogger(DefaultLogger):
                 self.log_scalar(metric.name(), value, i)
             except Exception as e:
                 print(f"Metric {metric.name()} failed at step {i}: {e}")
+
+    def gt_metrics(self, input, **kwargs):
+        results = {}
+        for metric in self.metrics_list:
+            try:
+                value = metric(self.gt, input, **kwargs)
+                results[metric.name()] = value
+            except Exception as e:
+                print(f"Metric {metric.name()} failed for ground truth: {e}")
+                return
+            
+            self.log_str("".join([f"GT {metric}: {value}\n" for metric, value in results.items()]))

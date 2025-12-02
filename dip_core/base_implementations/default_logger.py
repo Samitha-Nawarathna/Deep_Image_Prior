@@ -25,4 +25,12 @@ class DefaultLogger(Logger):
         Image.fromarray(arr).save(
             os.path.join(self.log_dir, f"{name}_{step}.png")
         )
+
+    def log_str(self, string, name="gt_results"):
+        with open(os.path.join(self.log_dir, f"{name}.txt"), "w") as f:
+            json.dump(string, f, indent=4)
+
+    def save_checkpoint(self, model, name="model.pt"):
+        path = os.path.join(self.ckpt_folder, name)
+        model.save(path)
     

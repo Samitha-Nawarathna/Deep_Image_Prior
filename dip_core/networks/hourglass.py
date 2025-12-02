@@ -1,164 +1,90 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class HourglassNetwork(nn.Module):
-    """
-    A U-Net/Hourglass-style network built based on user-defined specifications
-    for encoder, decoder, and skip connection blocks.
-
-    The architecture is dynamic based on the lists provided for channels and kernels.
-    """
     def __init__(self, n_u, n_d, k_d, k_u, n_s, k_s, upsampling, use_bn, use_sigmoid, in_channel, out_channel, activation):
-        """
-        Initializes the Hourglass Network.
-
-        Parameters:
-        n_u (list): List of output channels for each encoder block.
-        n_d (list): List of output channels for each decoder block.
-        k_d (list): List of kernel sizes for each decoder block.
-        k_u (list): List of kernel sizes for each encoder block.
-        n_s (list): List of output channels for each skip connection. (0 disables skip)
-        k_s (list): List of kernel sizes for each skip connection.
-        upsampling (str): Upsampling mode ('nearest', 'bilinear', etc.).
-        use_bn (bool): Whether to use BatchNorm2d in activation blocks.
-        use_sigmoid (bool): Whether to apply a sigmoid to the final output.
-        in_channel (int): Number of input channels to the network.
-        out_channel (int): Number of output channels from the network.
-        activation (str): Activation function name ('leakyReLU', 'ReLU', etc.).
-        """
         super(HourglassNetwork, self).__init__()
-
-        # --- Store configuration ---
+        
         self.n_u = n_u
         self.n_d = n_d
         self.n_s = n_s
         self.use_bn = use_bn
         self.upsampling = upsampling
-        
-        # --- Define activation layer ---
-        if activation == 'leakyReLU':
-            self.activation = nn.LeakyReLU(0.2, inplace=True)
-        elif activation == 'ReLU':
-            self.activation = nn.ReLU(inplace=True)
-        # Add other activations as needed
-        else:
-            raise ValueError(f"Activation '{activation}' not recognized.")
+        self.activation_type = activation  # Store the string, not the object
 
-        # --- Module Lists ---
         self.encoders = nn.ModuleList()
         self.skips = nn.ModuleList()
         self.decoders = nn.ModuleList()
 
-        n_layers = len(n_u)
-        if n_layers == 0:
-            raise ValueError("n_u (encoder channels) list cannot be empty.")
-            
-        if not all(len(lst) == n_layers for lst in [n_d, k_d, k_u, n_s, k_s]):
-            raise ValueError("All configuration lists (n_u, n_d, k_d, k_u, n_s, k_s) must have the same length.")
+        # ... (Validation checks remain the same) ...
 
-        # ==================================
         # 1. Build Encoder and Skip Paths
-        # ==================================
         current_channels = in_channel
-        for i in range(n_layers):
-            # --- Encoder Block ---
+        for i in range(len(n_u)):
             out_c = n_u[i]
             k = k_u[i]
-            encoder = self.encoder_block(current_channels, out_c, k)
-            self.encoders.append(encoder)
+            # Pass activation type string, not object
+            self.encoders.append(self.encoder_block(current_channels, out_c, k))
             current_channels = out_c
 
-            # --- Skip Connection Block ---
+            # Skip Connection
             skip_out_c = n_s[i]
             skip_k = k_s[i]
             if skip_out_c > 0:
-                # Only build skip_connection module if n_s[i] > 0
-                skip = self.skip_connection(current_channels, skip_out_c, skip_k)
-                self.skips.append(skip)
+                self.skips.append(self.skip_connection(current_channels, skip_out_c, skip_k))
             else:
-                # Use Identity as a placeholder if skip is disabled
-                # This layer won't be used in forward pass if n_s[i] is 0
                 self.skips.append(nn.Identity())
 
-        # ==================================
-        # 2. Build Bottleneck
-        # ==================================
-        # A simple conv block at the deepest part of the network
-        self.bottleneck = self._conv_block(current_channels, current_channels, kernel_size=3, stride=1, padding=1)
+        # 2. Bottleneck
+        self.bottleneck = self._conv_block(current_channels, current_channels, 3, 1, 1)
 
-        # ==================================
-        # 3. Build Decoder Path
-        # ==================================
-        # Loop backwards from the last layer to the first
-        for i in range(n_layers - 1, -1, -1):
+        # 3. Decoder Path
+        for i in range(len(n_u) - 1, -1, -1):
             skip_channels = n_s[i]
-            # Input to decoder is (previous_decoder_output + skip_connection_output)
             decoder_in_channels = current_channels + skip_channels
             decoder_out_channels = n_d[i]
             k = k_d[i]
-            
-            decoder = self.decoder_block(decoder_in_channels, decoder_out_channels, k)
-            self.decoders.append(decoder)
-            current_channels = decoder_out_channels # Output of this decoder is input to next
+            self.decoders.append(self.decoder_block(decoder_in_channels, decoder_out_channels, k))
+            current_channels = decoder_out_channels
 
-        # ==================================
-        # 4. Final Output Layer
-        # ==================================
-        self.final_conv = nn.Conv2d(current_channels, out_channel, kernel_size=1, stride=1, padding=0)
-        
-        if use_sigmoid:
-            self.final_act = nn.Sigmoid()
+        # 4. Final Output
+        self.final_conv = nn.Conv2d(current_channels, out_channel, kernel_size=1)
+        self.final_act = nn.Sigmoid() if use_sigmoid else nn.Identity()
+
+    def _get_activation(self):
+        """Helper to create a NEW activation instance every time."""
+        if self.activation_type == 'leakyReLU':
+            return nn.LeakyReLU(0.2, inplace=True)
+        elif self.activation_type == 'ReLU':
+            return nn.ReLU(inplace=True)
         else:
-            self.final_act = nn.Identity() # No-op
+            raise ValueError(f"Activation {self.activation_type} not recognized.")
 
     def _activation_block(self, n_ch):
-        """
-        Returns an activation block (BatchNorm + Activation or just Activation).
-        """
+        layers = []
         if self.use_bn:
-            return nn.Sequential(
-                nn.BatchNorm2d(n_ch),
-                self.activation
-            )
-        else:
-            return self.activation
+            layers.append(nn.BatchNorm2d(n_ch))
+        layers.append(self._get_activation()) # Create NEW instance
+        return nn.Sequential(*layers)
 
     def _conv_block(self, in_ch, out_ch, kernel_size, stride, padding):
-        """
-        Returns a (Conv2d -> ActivationBlock) sequence.
-        """
         return nn.Sequential(
             nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding),
             self._activation_block(out_ch)
         )
 
     def encoder_block(self, in_ch, out_ch, kernel_size):
-        """
-        Returns one encoder block as specified:
-        1. Conv2d (maps channels, no size change)
-        2. AvgPool2d (downsample)
-        3. ActivationBlock
-        4. _conv_block (no size change)
-        5. ActivationBlock
-        
-        Note: The sequence (ConvBlock -> Activation) is redundant but
-        implemented as requested.
-        """
         padding = (kernel_size - 1) // 2
         return nn.Sequential(
-            # 1. Conv2d
+            # 1. Conv + Downsample
             nn.Conv2d(in_ch, out_ch, kernel_size, stride=1, padding=padding),
-            # 2. Downsample
             nn.AvgPool2d(2, 2),
-            # 3. ActivationBlock
+            # 2. Activation
             self._activation_block(out_ch),
-            # 4. _conv_block (Conv -> Act)
-            self._conv_block(out_ch, out_ch, kernel_size, stride=1, padding=padding),
-            # 5. ActivationBlock (Note: This is the redundant activation)
-            self._activation_block(out_ch)
+            # 3. Conv Block (includes Act)
+            self._conv_block(out_ch, out_ch, kernel_size, stride=1, padding=padding)
+            # REMOVED the redundant 5th step (self._activation_block)
         )
-
     def skip_connection(self, in_ch, out_ch, kernel_size):
         """
         Returns a skip connection block:

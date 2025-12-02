@@ -11,6 +11,10 @@ class Logger(ABC):
         pass
 
     @abstractmethod
+    def log_str(self, string):
+        pass
+
+    @abstractmethod
     def save_config(self, config: dict):
         pass
     

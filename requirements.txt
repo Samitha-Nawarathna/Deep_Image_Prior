@@ -9,3 +9,6 @@ scikit-image
 opencv-python
 pyyaml
 ipykernel
+torchsummary
+graphviz
+torchviz
