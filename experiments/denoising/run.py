@@ -24,11 +24,12 @@ from experiments.denoising.denoising_logger import DenoisingLogger
 
 
 CURRENT_DIR = os.path.dirname(__file__)
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs")
+LOG_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 EXPERIMENT_NAME = 'denoising'
 
 
 if __name__ == "__main__":
+    print(LOG_DIR)
 
     # ------------------------------
     # 1. Load + validate config
