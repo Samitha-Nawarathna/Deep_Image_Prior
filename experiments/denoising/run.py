@@ -8,6 +8,7 @@ from dip_core.utils.losses import create_l2_loss
 from dip_core.utils.metrics import PSNR
 from dip_core.utils.debugging import Debugger
 from dip_core.utils.plotting import plot_network, plot_tensor
+from dip_core.utils.regularizers import TVRegularizer
 
 from dip_core.networks.factory import DefaultNetworkFactory
 from dip_core.training.default_training_step import DefaultTrainingStep
@@ -115,19 +116,20 @@ if __name__ == "__main__":
         target=noisy_image,
         logger=logger,
         config=config,
-        image_per=config["image_per"]
+        image_per=config["image_per"],
+        regularizer=TVRegularizer(config["regularization_weight"])
     )
 
     # ------------------------------
     # 8. Run debuggings 
     # ------------------------------    
 
-    # debugger = Debugger(model)
-    # debugger.run("memorization", gt)
+    debugger = Debugger(model)
+    debugger.run("memorization", gt)
 
-    # print(debugger.get_log())
+    print(debugger.get_log())
 
-    # plot_network(model)
+    plot_network(model)
 
 
 

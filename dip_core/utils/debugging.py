@@ -552,4 +552,4 @@ if __name__ == '__main__':
     inp, _ = get_i2i_data(1)
     debugger.run("memorization", image=inp, steps=20)
 
-    print(f"\n--- ✅ Done. Verify contents of '{LOG_DIR}' ---")
+    print(f"\n--- Done. Verify contents of '{LOG_DIR}' ---")
