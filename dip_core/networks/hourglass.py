@@ -78,7 +78,7 @@ class HourglassNetwork(nn.Module):
         return nn.Sequential(
             # 1. Conv + Downsample
             nn.Conv2d(in_ch, out_ch, kernel_size, stride=1, padding=padding),
-            nn.AvgPool2d(2, 2),
+            nn.Conv2d(out_ch, out_ch, kernel_size, stride=2, padding=padding),
             # 2. Activation
             self._activation_block(out_ch),
             # 3. Conv Block (includes Act)
